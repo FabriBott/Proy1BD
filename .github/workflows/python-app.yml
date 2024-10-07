@@ -45,6 +45,6 @@ jobs:
       - name: Build and push Docker image
         if: success() # This runs only if tests pass (without enforcing coverage)
         run: |
-          docker build -t fpicadoalvarado/repo1:latest .
+          docker build -t fpicadoalvarado/repoproy:first .
           echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          docker push fpicadoalvarado/repo1:latest
+          docker push fpicadoalvarado/repoproy:first
