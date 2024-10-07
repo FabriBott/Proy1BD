@@ -50,7 +50,7 @@ jobs:
       # Run tests with pytest (without checking coverage threshold)
       - name: Run tests with pytest
         run: |
-          pytest --cov=./ --cov-report=term
+          poetry run pytest --cov=./ --cov-report=term
 
       # Push Docker image if tests pass (no coverage threshold enforced)
       - name: Build and push Docker image
