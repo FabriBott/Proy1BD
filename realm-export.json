@@ -1,0 +1,180 @@
+{
+  "realm": "TestApp",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "my-app-client",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "client-secreta",
+      "redirectUris": [
+        "http://localhost:8000/*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "post.logout.redirect.uris": "+"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "name": "Client Host",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientHost",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientHost",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "Client IP Address",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientAddress",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientAddress",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "Client ID",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "client_id",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "client_id",
+            "jsonType.label": "String"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "access": {
+        "view": true,
+        "configure": true,
+        "manage": true
+      }
+    }
+  ],
+  "roles": {
+    "client": {
+      "my-app-client": [
+        {
+          "name": "uma_authorization",
+          "description": "UMA Authorization Role"
+        },
+        {
+          "name": "offline_access",
+          "description": "Offline Access Role"
+        },
+        {
+          "name": "admin",
+          "description": "Admin Role"
+        },
+        {
+          "name": "user",
+          "description": "User Role"
+        }
+      ]
+    }
+  },
+  "users": [
+    {
+      "username": "administrator",
+      "enabled": true,
+      "email": "administrator@example.com",
+      "firstName": "Admin",
+      "lastName": "Supremo",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "AdminPass"
+        }
+      ],
+      "clientRoles": {
+        "my-app-client": [
+          "user", "admin"
+        ]
+      }
+    },
+    {
+      "username": "testuser",
+      "enabled": true,
+      "email": "testuser@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "testpassword"
+        }
+      ],
+      "clientRoles": {
+        "my-app-client": [
+          "user"
+        ]
+      }
+    },
+    {
+      "username": "charlie",
+      "enabled": true,
+      "email": "charlie@example.com",
+      "firstName": "Charlie",
+      "lastName": "User",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "123"
+        }
+      ],
+      "clientRoles": {
+        "my-app-client": [
+          "admin"
+        ]
+      }
+    }
+  ]
+}
