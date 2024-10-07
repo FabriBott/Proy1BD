@@ -36,15 +36,21 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      # Run tests with pytest (without checking coverage threshold)
-      - name: Run tests with pytest
+      # Run tests with pytest and measure coverage
+      - name: Run tests with pytest and check coverage
         run: |
           pytest --cov=./ --cov-report=term
+          coverage=$(pytest --cov=./ --cov-report=term | tee /dev/tty | awk '/TOTAL/ {print $4}')
+          echo "Coverage is $coverage%"
+          if (( $(echo "$coverage < 85" |bc -l) )); then
+            echo "Coverage is below 85%"
+            exit 1
+          fi
 
       # Push Docker image if tests pass (no coverage threshold enforced)
       - name: Build and push Docker image
         if: success() # This runs only if tests pass (without enforcing coverage)
         run: |
-          docker build -t fpicadoalvarado/repo1:latest .
+          docker build -t fpicadoalvarado/repoproy:first .
           echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          docker push fpicadoalvarado/repo1:latest
+          docker push fpicadoalvarado/repoproy:first
