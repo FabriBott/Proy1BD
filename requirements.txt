@@ -6,3 +6,4 @@ python-multipart==0.0.5
 python-keycloak==4.3.0
 requests==2.31.0
 pydantic==2.8.2
+pymongo==4.4.1

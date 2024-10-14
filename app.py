@@ -11,6 +11,12 @@ from pydantic import BaseModel
 
 import redis
 
+from DB import init_databases
+from CRUD.Usuario import crear_usuario
+from models import *
+
+from models.Usuario import Usuario  # Importar la clase Usuario, no el módulo
+from models.Usuario import UsuarioCreate
 from models.response import TokenResponse
 
 from keycloak import KeycloakOpenID, KeycloakAdmin
@@ -20,6 +26,23 @@ from fastapi.security import OAuth2PasswordBearer
 
 app = FastAPI()
 
+
+@app.on_event("startup")
+async def startup():
+    init_databases()
+
+
+
+@app.post("/usuarios/")
+async def crear_usuario_endpoint(usuario: UsuarioCreate):
+    nuevo_usuario = crear_usuario(
+        nombre=usuario.nombre,
+        apellidos=usuario.apellidos,
+        username=usuario.username,
+        password=usuario.password,
+        fechaRegistro=usuario.fechaRegistro
+    )
+    return nuevo_usuario
 
 #----------------------Auth server config----------------------#
 keycloak_openid = KeycloakOpenID(
@@ -72,6 +95,8 @@ async def login(username: str = Form(...), password: str = Form(...)):
 
 
 #----------------------Postgres server config----------------------#
+
+
 
 #----------------------Redis server config----------------------#
 

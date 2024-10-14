@@ -1,3 +1,11 @@
+CREATE DATABASE RedSocial
+    WITH 
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'es_ES.UTF-8'
+    LC_CTYPE = 'es_ES.UTF-8'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
+
 CREATE TABLE "Usuarios" (
   "identificador" SERIAL PRIMARY KEY,
   "nombre" VARCHAR(25),

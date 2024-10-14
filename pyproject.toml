@@ -1,10 +1,13 @@
 [tool.poetry]
 name = "webapp"
+package-mode = false 
 version = "0.1.0"
 description = ""
 authors = ["Charlie00CR"]
 
 [tool.poetry.dependencies]
+sqlalchemy = "^1.4.0"
+pymongo = "^4.4.1"
 python = "^3.11"
 uvicorn = "^0.30.5"
 fastapi = "^0.103.0"  
@@ -31,3 +34,4 @@ pythonpath = [
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+

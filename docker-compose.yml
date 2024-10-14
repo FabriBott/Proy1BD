@@ -7,45 +7,47 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 8000:8000
-    networks:
-      - default
-
-  mongo:
-    image: mongo:8.0.0
-    restart: always
-    ports:
-      - 27017:27017
-    networks:
-      - default
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: root
     volumes:
-      - mongo_data:/data/db 
-
-  mongoexpress:
-    image: mongo-express:1-20-alpine3.19
-    restart: always
-    ports:
-      - 8081:8081
-    depends_on:
-      - "mongo"
+      - .:/app  # Montar el código en el contenedor para el desarrollo
     networks:
       - default
-    environment:
-      ME_CONFIG_MONGODB_SERVER: db
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: root
 
-  redis:
-    image: redis:7.4.0-alpine3.20
-    restart: always
-    ports:
-      - 6379:6379
-    networks:
-      - default
-    volumes:
-      - redis_data:/data  
+  #mongo:
+   # image: mongo:8.0.0
+   # restart: always
+   # ports:
+   #   - 27017:27017
+   # networks:
+   #   - default
+   # environment:
+    #  MONGO_INITDB_ROOT_USERNAME: root
+     # MONGO_INITDB_ROOT_PASSWORD: root
+    #volumes:
+     # - mongo_data:/data/db 
+
+  #mongoexpress:
+   # image: mongo-express:1-20-alpine3.19
+   # restart: always
+   # ports:
+    #  - 8081:8081
+    #depends_on:
+    #  - "mongo"
+    #networks:
+     # - default
+    #environment:
+     # ME_CONFIG_MONGODB_SERVER: mongo
+     # ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      #ME_CONFIG_MONGODB_ADMINPASSWORD: root
+
+  #redis:
+   # image: redis:7.4.0-alpine3.20
+   # restart: always
+    #ports:
+     # - 6379:6379
+    #networks:
+     # - default
+    #volumes:
+     # - redis_data:/data  
 
   postgres:
     image: postgres:alpine
@@ -57,46 +59,48 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydatabase
+      POSTGRES_DB: redSocial
     volumes:
       - postgres_data:/var/lib/postgresql/data  
       - ./DB/postgres:/docker-entrypoint-initdb.d/ 
 
-  pgadmin:
-      image: dpage/pgadmin4:latest
-      container_name: pgadmin
-      environment:
-        PGADMIN_DEFAULT_EMAIL: admin@admin.com
-        PGADMIN_DEFAULT_PASSWORD: admin
-      ports:
-        - "80:80"
-      depends_on:
-        - postgres
-      volumes:
-        - pgadmin_data:/var/lib/pgadmin
+  #pgadmin:
+  #    image: dpage/pgadmin4:latest
+  #    container_name: pgadmin
+  #    environment:
+   #     PGADMIN_DEFAULT_EMAIL: admin@admin.com
+    #    PGADMIN_DEFAULT_PASSWORD: admin
+     # ports:
+      #  - "80:80"
+      #depends_on:
+      #  - postgres
+      #volumes:
+       # - pgadmin_data:/var/lib/pgadmin
       
   #Auth
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0.1
-    environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
-      - KEYCLOAK_IMPORT=/opt/keycloak/data/import/realm-export.json
-      - KEYCLOAK_LOGLEVEL=DEBUG
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json
-    command: start-dev --import-realm
-    networks:
-      - default
+
+#  keycloak:
+#    image: quay.io/keycloak/keycloak:24.0.1
+#    environment:
+#      - KEYCLOAK_ADMIN=admin
+#      - KEYCLOAK_ADMIN_PASSWORD=admin
+#      - KEYCLOAK_IMPORT=/opt/keycloak/data/import/realm-export.json
+#      - KEYCLOAK_LOGLEVEL=DEBUG
+#    ports:
+#      - "8080:8080"
+#    volumes:
+#      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json
+#    command: start-dev --import-realm
+#    networks:
+#      - default
+      
 
 volumes:
-  mongo_data:
-  redis_data:
+  #mongo_data:
+  #redis_data:
   postgres_data:
-  keycloak_data:
-  pgadmin_data:
+  #keycloak_data:
+  #pgadmin_data:
 
 networks:
   default:
