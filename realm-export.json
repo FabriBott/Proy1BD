@@ -4,175 +4,164 @@
   "clients": [
     {
       "clientId": "my-app-client",
-      "surrogateAuthRequired": false,
       "enabled": true,
-      "alwaysDisplayInConsole": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "client-secreta",
-      "redirectUris": [
-        "http://localhost:8000/*"
-      ],
-      "webOrigins": [
-        "*"
-      ],
-      "notBefore": 0,
-      "bearerOnly": false,
-      "consentRequired": false,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": true,
-      "authorizationServicesEnabled": true,
-      "publicClient": false,
-      "frontchannelLogout": false,
       "protocol": "openid-connect",
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "publicClient": false,
+      "secret": "cliente-secreta",
+      "serviceAccountsEnabled": true,
+      "defaultRoles": ["offline_access", "uma_authorization"],
       "attributes": {
-        "post.logout.redirect.uris": "+"
+        "access.token.lifespan": "3600"
       },
-      "authenticationFlowBindingOverrides": {},
-      "fullScopeAllowed": true,
-      "nodeReRegistrationTimeout": -1,
-      "protocolMappers": [
-        {
-          "name": "Client Host",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usersessionmodel-note-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.session.note": "clientHost",
-            "introspection.token.claim": "true",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "clientHost",
-            "jsonType.label": "String"
-          }
-        },
-        {
-          "name": "Client IP Address",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usersessionmodel-note-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.session.note": "clientAddress",
-            "introspection.token.claim": "true",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "clientAddress",
-            "jsonType.label": "String"
-          }
-        },
-        {
-          "name": "Client ID",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usersessionmodel-note-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.session.note": "client_id",
-            "introspection.token.claim": "true",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "client_id",
-            "jsonType.label": "String"
-          }
-        }
-      ],
-      "defaultClientScopes": [
-        "web-origins",
-        "acr",
-        "profile",
-        "roles",
-        "email"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access",
-        "microprofile-jwt"
-      ],
-      "access": {
-        "view": true,
-        "configure": true,
-        "manage": true
-      }
+      "directAccessGrantsEnabled": true
     }
   ],
   "roles": {
+    "realm": [
+      {
+        "name": "offline_access",
+        "description": "Access to offline resources"
+      },
+      {
+        "name": "admin",
+        "description": "Admin role"
+      },
+      {
+        "name": "uma_authorization",
+        "description": "UMA Authorization"
+      },
+      {
+        "name": "default-roles-master",
+        "description": "Default roles for master realm"
+      },
+      {
+        "name": "create-realm",
+        "description": "Create realm role"
+      }
+    ],
     "client": {
-      "my-app-client": [
+      "my-app-client": [  
         {
-          "name": "uma_authorization",
-          "description": "UMA Authorization Role"
+          "name": "query-clients",
+          "description": "Query clients role"
         },
         {
-          "name": "offline_access",
-          "description": "Offline Access Role"
+          "name": "impersonation",
+          "description": "Impersonation role"
         },
         {
-          "name": "admin",
-          "description": "Admin Role"
+          "name": "view-identity-providers",
+          "description": "View identity providers role"
         },
         {
-          "name": "user",
-          "description": "User Role"
+          "name": "manage-events",
+          "description": "Manage events role"
+        },
+        {
+          "name": "manage-users",
+          "description": "Manage users role"
+        },
+        {
+          "name": "view-authorization",
+          "description": "View authorization role"
+        },
+        {
+          "name": "view-events",
+          "description": "View events role"
+        },
+        {
+          "name": "query-realms",
+          "description": "Query realms role"
+        },
+        {
+          "name": "query-groups",
+          "description": "Query groups role"
+        },
+        {
+          "name": "manage-identity-providers",
+          "description": "Manage identity providers role"
+        },
+        {
+          "name": "manage-authorization",
+          "description": "Manage authorization role"
+        },
+        {
+          "name": "view-clients",
+          "description": "View clients role"
+        },
+        {
+          "name": "view-users",
+          "description": "View users role"
+        },
+        {
+          "name": "manage-clients",
+          "description": "Manage clients role"
+        },
+        {
+          "name": "create-client",
+          "description": "Create client role"
+        },
+        {
+          "name": "manage-realm",
+          "description": "Manage realm role"
+        },
+        {
+          "name": "query-users",
+          "description": "Query users role"
+        },
+        {
+          "name": "view-realm",
+          "description": "View realm role"
         }
       ]
     }
   },
   "users": [
     {
-      "username": "administrator",
+      "id": "unique-user-id",
+      "username": "admin_user",
+      "emailVerified": true,
       "enabled": true,
-      "email": "administrator@example.com",
+      "totp": false,
+      "email": "admin_user@example.com",
       "firstName": "Admin",
-      "lastName": "Supremo",
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "AdminPass"
-        }
-      ],
-      "clientRoles": {
-        "my-app-client": [
-          "user", "admin"
-        ]
-      }
-    },
-    {
-      "username": "testuser",
-      "enabled": true,
-      "email": "testuser@example.com",
-      "firstName": "Test",
       "lastName": "User",
-      "emailVerified": true,
       "credentials": [
         {
           "type": "password",
-          "value": "testpassword"
+          "value": "AdminPassword",
+          "temporary": false
         }
       ],
-      "clientRoles": {
-        "my-app-client": [
-          "user"
-        ]
-      }
-    },
-    {
-      "username": "charlie",
-      "enabled": true,
-      "email": "charlie@example.com",
-      "firstName": "Charlie",
-      "lastName": "User",
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "123"
-        }
+      "realmRoles": [
+        "offline_access",
+        "admin",
+        "uma_authorization",
+        "default-roles-master",
+        "create-realm"
       ],
       "clientRoles": {
-        "my-app-client": [
-          "admin"
+        "my-app-client": [ 
+          "query-clients",
+          "impersonation",
+          "view-identity-providers",
+          "manage-events",
+          "manage-users",
+          "view-authorization",
+          "view-events",
+          "query-realms",
+          "query-groups",
+          "manage-identity-providers",
+          "manage-authorization",
+          "view-clients",
+          "view-users",
+          "manage-clients",
+          "create-client",
+          "manage-realm",
+          "query-users",
+          "view-realm"
         ]
       }
     }

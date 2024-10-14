@@ -12,9 +12,11 @@ psycopg2-binary = "^2.9.9"
 asyncpg = "^0.29.0"
 python-keycloak = "^4.3.0"
 requests = "2.31.0"
-pydantic = "2.8.2"
+pydantic = {extras = ["email"], version = "^2.9.2"}
 python-multipart = "^0.0.5"
 redis = {extras = ["hiredis"], version = "^5.1.1"}
+python-jose = "^3.3.0"
+logging = "^0.4.9.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.3.2"

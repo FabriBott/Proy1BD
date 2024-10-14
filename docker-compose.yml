@@ -9,6 +9,8 @@ services:
       - 8000:8000
     networks:
       - default
+    depends_on:
+      - keycloak
 
   mongo:
     image: mongo:8.0.0
