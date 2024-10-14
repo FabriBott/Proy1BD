@@ -1,0 +1,61 @@
+# This workflow will install Python dependencies, run tests and check coverage
+
+name: Python application without coverage check
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Instalar Poetry
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+
+      # Instalar dependencias con Poetry
+      - name: Install dependencies
+        run: |
+          poetry install
+      
+      # Set up Python environment
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+      
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest pytest-cov
+
+      # Lint with flake8 (optional but recommended)
+      - name: Lint with flake8
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      # Run tests with pytest (without checking coverage threshold)
+      - name: Run tests with pytest
+        run: |
+          poetry run pytest --cov=./ --cov-report=term
+
+      # Push Docker image if tests pass (no coverage threshold enforced)
+      - name: Build and push Docker image
+        if: success() # This runs only if tests pass (without enforcing coverage)
+        run: |
+          docker build -t fpicadoalvarado/repoproy:first .
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          docker push fpicadoalvarado/repoproy:first
