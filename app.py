@@ -28,6 +28,7 @@ from fastapi.security import OAuth2PasswordBearer
 import logging
 
 # Configuración del logger
+#Todo: remove before deployment
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,31 @@ REALM_NAME = "TestApp"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
 
-x = os.getenv("Nombre")
+#Env variables
+# PostgreSQL
+postgres_host = os.getenv("POSTGRES_HOST")
+postgres_port = os.getenv("POSTGRES_PORT")
+postgres_name = os.getenv("POSTGRES_NAME")
+postgres_user = os.getenv("POSTGRES_USER")
+postgres_password = os.getenv("POSTGRES_PASSWORD")
+
+# Redis
+redis_host = os.getenv("REDIS_HOST")
+redis_port = os.getenv("REDIS_PORT")
+
+# MongoDB
+mongo_host = os.getenv("MONGO_HOST")
+mongo_port = os.getenv("MONGO_PORT")
+mongo_initdb_root_username = os.getenv("MONGO_INITDB_ROOT_USERNAME")
+mongo_initdb_root_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
+
+# Keycloak
+keycloak_server_url = os.getenv("KEYCLOAK_SERVER_URL")
+keycloak_realm = os.getenv("KEYCLOAK_REALM")
+keycloak_client_id = os.getenv("KEYCLOAK_CLIENT_ID")
+keycloak_client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")
+
+
 
 app = FastAPI()
 
