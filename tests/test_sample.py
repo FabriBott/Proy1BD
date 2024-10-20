@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 # import de app.py
-from webapp.app import app
+from app import app
 
 # Usamos TestClient para simular solicitudes HTTP en FastAPI
 client = TestClient(app)
