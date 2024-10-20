@@ -37,6 +37,8 @@ REALM_NAME = "TestApp"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
 
+x = os.getenv("Nombre")
+
 app = FastAPI()
 
 tokenAdministrativo = None
@@ -195,8 +197,6 @@ async def logout(token: str = Depends(oauth2_scheme)):
             raise HTTPException(status_code=response.status_code, detail="Error al cerrar sesión.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
 
 
 if __name__ == "__main__":

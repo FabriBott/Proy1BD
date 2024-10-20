@@ -1,5 +1,4 @@
 services:
-
   webapp:
     image: webapp
     build:
@@ -9,8 +8,25 @@ services:
       - 8000:8000
     volumes:
       - .:/app  # Montar el código en el contenedor para el desarrollo
+    environment:
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=redSocial
+      - DATABASE_USER=user
+      - DATABASE_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+      - KEYCLOAK_SERVER_URL=http://keycloak:8080/auth
+      - KEYCLOAK_REALM=your-realm-name
+      - KEYCLOAK_CLIENT_ID=your-client-id
+      - KEYCLOAK_CLIENT_SECRET=your-client-secret
     networks:
       - default
+
 
   mongo:
     image: mongo:8.0.0
