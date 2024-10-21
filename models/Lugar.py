@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, ForeignKey
-from db.postgres import Base
+from DB.postgres import Base
 from sqlalchemy.orm import relationship
 
 class Lugar(Base):
@@ -13,7 +13,7 @@ class Lugar(Base):
     pais = Column(String(75), nullable=False)
     fechaCreacion = Column(TIMESTAMP, nullable=False)
 
-    # Relación con usuario
+    # Relación con usuario (cadena de texto para evitar problemas de importación)
     usuario = relationship("Usuario", back_populates="lugares")
     # Relación con viajes
     viajes_lugares = relationship("ViajeLugar", back_populates="lugar")

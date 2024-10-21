@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, ForeignKey
-from db.postgres import Base
+from DB.postgres import Base
 from sqlalchemy.orm import relationship
 
 class ViajeLugar(Base):

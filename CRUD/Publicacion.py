@@ -1,11 +1,11 @@
 from DB.postgres import SessionLocal
-from models import Publicacion
+from models.Publicacion import Publicacion
 
 # Función para crear una publicación
-def crear_publicacion(usuario_id, titulo, descripcion, fechaPublicacion):
+def crear_publicacion(usuarioId, titulo, descripcion, fechaPublicacion):
     session = SessionLocal()
     nueva_publicacion = Publicacion(
-        usuarioId=usuario_id,
+        usuarioId=usuarioId,
         titulo=titulo,
         descripcion=descripcion,
         fechaPublicacion=fechaPublicacion
@@ -16,9 +16,18 @@ def crear_publicacion(usuario_id, titulo, descripcion, fechaPublicacion):
     session.close()
     return nueva_publicacion
 
+# Función para obtener todas las publicaciones
+def obtener_publicaciones():
+    session = SessionLocal()
+    try:
+        return session.query(Publicacion).all()
+    finally:
+        session.close()
+
 # Función para obtener una publicación por ID
 def obtener_publicacion_por_id(publicacion_id):
     session = SessionLocal()
-    publicacion = session.query(Publicacion).filter(Publicacion.identificador == publicacion_id).first()
-    session.close()
-    return publicacion
+    try:
+        return session.query(Publicacion).filter(Publicacion.identificador == publicacion_id).first()
+    finally:
+        session.close()
