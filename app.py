@@ -51,6 +51,14 @@ from keycloak import KeycloakError, KeycloakOpenID, KeycloakAdmin
 from fastapi.security import OAuth2PasswordBearer
 import logging
 
+
+# REDIS
+from DB.redis import init_redis
+from fastapi import Response  
+# Inicializa Redis al arrancar la aplicación
+redis_client = init_redis()
+
+
 # Configuración del logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -60,6 +68,8 @@ KEYCLOAK_SERVER_URL = "http://keycloak:8080/auth"
 REALM_NAME = "TestApp"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
+
+x = os.getenv("Nombre")
 
 app = FastAPI()
 
@@ -73,6 +83,13 @@ async def startup():
 
 @app.post("/usuarios/")
 async def crear_usuario_endpoint(usuario: UsuarioCreate):
+    
+    # Verificar si el usuario ya está en caché
+    cached_user = redis_client.get(f"user:{usuario.username}")
+    if cached_user:
+        logger.info(f"Usuario {usuario.username} recuperado de la caché.")
+        return json.loads(cached_user)  # Convertir de JSON a dict
+
     nuevo_usuario = crear_usuario(
         nombre=usuario.nombre,
         apellidos=usuario.apellidos,
@@ -80,6 +97,11 @@ async def crear_usuario_endpoint(usuario: UsuarioCreate):
         password=usuario.password,
         fechaRegistro=usuario.fechaRegistro
     )
+
+    # Guardar el nuevo usuario en caché
+    redis_client.set(f"user:{usuario.username}", json.dumps(nuevo_usuario))
+    logger.info(f"Usuario {usuario.username} almacenado en caché.")
+
     return nuevo_usuario
 
 #----------------------Auth server config----------------------#
@@ -160,6 +182,12 @@ def get_admin_token() -> adminToken:
 def create_user(user: NewUser):
     global tokenAdministrativo  # Usar la variable global
 
+    # Verificar si el usuario ya está en caché
+    cached_user = redis_client.get(f"user:{user.username}")
+    if cached_user:
+        logger.info(f"Usuario {user.username} recuperado de la caché.")
+        return json.loads(cached_user)
+
     # Verificar si el token administrativo está disponible, si no, llamarlo
     if tokenAdministrativo is None:
         try:
@@ -194,6 +222,11 @@ def create_user(user: NewUser):
 
     # Realizar la solicitud POST para crear el usuario
     response = requests.post(url, json=data, headers=headers)
+
+    redis_client.set(f"user:{user.username}", json.dumps(data))  # Ajustar según el formato del usuario creado
+    logger.info(f"Usuario {user.username} almacenado en caché.")
+
+    # return {"message": "Usuario creado exitosamente"}
 
     # Verificar la respuesta
     if response.status_code == 201:
