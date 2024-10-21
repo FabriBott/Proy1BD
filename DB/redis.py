@@ -2,7 +2,7 @@ import os
 import redis
 
 class RedisClient:
-    def __init__(self):
+    def init_redis(self):
         self.redis_client = None
         self._connect()
 
