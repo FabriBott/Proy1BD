@@ -13,6 +13,7 @@ import requests
 import redis
 from pymongo import MongoClient
 from contextlib import asynccontextmanager
+
 from DB import init_databases
 from CRUD.Usuario import crear_usuario
 from models import *
@@ -23,17 +24,17 @@ from models.response import TokenResponse
 from models.createUser import UserCreate
 from models.user import User
 from models.adminToken import adminToken
-from models.newUser import NewUser
 from keycloak import KeycloakError, KeycloakOpenID, KeycloakAdmin
 from fastapi.security import OAuth2PasswordBearer
 import logging
 
 
 # Configuración del logger
+#Todo: remove before deployment
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Env variables
+#Env variables
 # PostgreSQL
 postgres_host = os.getenv("POSTGRES_HOST")
 postgres_port = os.getenv("POSTGRES_PORT")
@@ -44,6 +45,24 @@ postgres_password = os.getenv("POSTGRES_PASSWORD")
 # Redis
 redis_host = os.getenv("REDIS_HOST")
 redis_port = os.getenv("REDIS_PORT")
+
+# MongoDB
+mongo_host = os.getenv("MONGO_HOST")
+mongo_port = os.getenv("MONGO_PORT")
+mongo_initdb_root_username = os.getenv("MONGO_INITDB_ROOT_USERNAME")
+mongo_initdb_root_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
+
+# Keycloak
+keycloak_server_url = os.getenv("KEYCLOAK_SERVER_URL")
+keycloak_realm = os.getenv("KEYCLOAK_REALM")
+keycloak_client_id = os.getenv("KEYCLOAK_CLIENT_ID")
+keycloak_client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")
+keycloack_admin_user = os.getenv("KEYCLOAK_ADMIN_USER")
+keycloack_admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
+keycloak_admincli_user = os.getenv("KEYCLOAK_ADMINCLI_USER")
+
+#Connections
+connections = None
 
 # MongoDB
 mongo_host = os.getenv("MONGO_HOST")
@@ -81,6 +100,7 @@ async def lifespan(app: FastAPI):
     # Ejemplo: connections.close() (dependiendo de cómo se implementa `init_databases`)
 
 app = FastAPI(lifespan=lifespan)
+
 
 #----------------------Auth server config----------------------#
 keycloak_openid = KeycloakOpenID(
@@ -168,8 +188,8 @@ def get_admin_token() -> adminToken:
 
 
 @app.post("/create_user/")
-def create_user(user: NewUser):
-    global tokenAdministrativo
+def create_user(user: UserCreate):
+    global tokenAdministrativo  # Usar la variable global
 
     if tokenAdministrativo is None:
         try:
@@ -181,13 +201,13 @@ def create_user(user: NewUser):
     data = {
         "username": user.username,
         "email": user.email,
-        "firstName": user.firstName,
-        "lastName": user.lastName,
+        "firstName": user.firstname,
+        "lastName": user.lastname,
         "enabled": user.enabled,
         "credentials": [
             {
                 "type": "password",
-                "value": "password123",
+                "value": user.password,  # Cambia esta contraseña según sea necesario
                 "temporary": False
             }
         ]
@@ -200,6 +220,9 @@ def create_user(user: NewUser):
 
     response = requests.post(url, json=data, headers=headers)
 
+    #Enviar solicitud a postgres
+
+    # Verificar la respuesta
     if response.status_code == 201:
         return {"message": "Usuario creado exitosamente"}
     else:
