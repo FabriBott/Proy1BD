@@ -12,7 +12,7 @@ from jose import JWTError
 import requests
 import redis
 from pymongo import MongoClient
-
+from contextlib import asynccontextmanager
 from DB import init_databases
 from CRUD.Usuario import crear_usuario
 from models import *
@@ -30,11 +30,10 @@ import logging
 
 
 # Configuración del logger
-#Todo: remove before deployment
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-#Env variables
+# Env variables
 # PostgreSQL
 postgres_host = os.getenv("POSTGRES_HOST")
 postgres_port = os.getenv("POSTGRES_PORT")
@@ -61,26 +60,29 @@ keycloack_admin_user = os.getenv("KEYCLOAK_ADMIN_USER")
 keycloack_admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
 keycloak_admincli_user = os.getenv("KEYCLOAK_ADMINCLI_USER")
 
-#Connections
+# Connections
 connections = {}
-
-app = FastAPI()
-
 tokenAdministrativo = None
 
-@app.on_event("startup")
-async def startup():
+# -------------------Ciclo de vida de la aplicación-------------------#
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Código que se ejecuta al iniciar la aplicación (startup)
+    logger.debug("Entrando al startup")
     global connections
     connections = init_databases()
     
-    
+    # Se ejecuta el resto de la aplicación
+    yield
 
+    # Código que se ejecuta al cerrar la aplicación (shutdown)
+    logger.debug("Cerrando conexiones")
+    # Aquí puedes liberar las conexiones si es necesario
+    # Ejemplo: connections.close() (dependiendo de cómo se implementa `init_databases`)
 
-
-
+app = FastAPI(lifespan=lifespan)
 
 #----------------------Auth server config----------------------#
-# Configuración de Keycloak
 keycloak_openid = KeycloakOpenID(
     server_url=keycloak_server_url,
     client_id=keycloak_client_id,
@@ -101,6 +103,15 @@ keycloak_admin = KeycloakAdmin(
 keycloak_admin.realm_name = keycloak_realm
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+@app.get("/test")
+def testDB():
+    global connections
+    return {"connections": list(connections.keys())}
+
+@app.post("/test")
+def testDB():
+    global connections
+    return {"connections": list(connections.keys())}
 
 
 #----------------------Endpoints----------------------#
@@ -112,6 +123,7 @@ async def login(username: str = Form(...), password: str = Form(...)):
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         userinfo = keycloak_openid.userinfo(token)
@@ -121,27 +133,26 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
+
 @app.get("/protected/")
 async def protected_route(current_user: User = Depends(get_current_user)):
     return {"message": f"Hola {current_user.username}, tu acceso ha sido validado."}
+
 
 # Función para obtener el token administrativo
 def get_admin_token() -> adminToken:
     global tokenAdministrativo
 
-    # URL para obtener el token
     url = "http://keycloak:8080/realms/master/protocol/openid-connect/token"
     data = {
         "client_id": "admin-cli",
-        "username": "admin",  # Cambiar según sea necesario
-        "password": "admin",  # Cambiar según sea necesario
+        "username": "admin",
+        "password": "admin",
         "grant_type": "password"
     }
 
-    # Realizar la solicitud POST para obtener el token
     r = requests.post(url, data=data)
 
-    # Verificar si la solicitud fue exitosa
     if r.status_code == 200:
         token_info = r.json()
         tokenAdministrativo = adminToken(
@@ -155,21 +166,18 @@ def get_admin_token() -> adminToken:
         logger.error(f"Error al obtener el token: {r.status_code} - {r.text}")
         raise HTTPException(status_code=r.status_code, detail="Error al obtener el token")
 
+
 @app.post("/create_user/")
 def create_user(user: NewUser):
-    global tokenAdministrativo  # Usar la variable global
+    global tokenAdministrativo
 
-    # Verificar si el token administrativo está disponible, si no, llamarlo
     if tokenAdministrativo is None:
         try:
-            get_admin_token()  # Llama a la función para obtener el token
+            get_admin_token()
         except HTTPException as e:
             raise HTTPException(status_code=e.status_code, detail="Token administrativo no disponible")
 
-    # URL para crear un nuevo usuario
     url = "http://keycloak:8080/admin/realms/TestApp/users"
-
-    # Datos del nuevo usuario
     data = {
         "username": user.username,
         "email": user.email,
@@ -179,28 +187,24 @@ def create_user(user: NewUser):
         "credentials": [
             {
                 "type": "password",
-                "value": "password123",  # Cambia esta contraseña según sea necesario
+                "value": "password123",
                 "temporary": False
             }
         ]
     }
 
-    # Configurar los headers con el token administrativo
     headers = {
         "Authorization": f"Bearer {tokenAdministrativo.access_token}",
         "Content-Type": "application/json"
     }
 
-    # Realizar la solicitud POST para crear el usuario
     response = requests.post(url, json=data, headers=headers)
 
-    #Enviar solicitud a postgres
-
-    # Verificar la respuesta
     if response.status_code == 201:
         return {"message": "Usuario creado exitosamente"}
     else:
         raise HTTPException(status_code=response.status_code, detail=response.text)
+
 
 @app.post("/usuarios/")
 async def crear_usuario_endpoint(usuario: UsuarioCreate):
@@ -223,10 +227,9 @@ async def logout(token: str = Depends(oauth2_scheme)):
         }
         response = requests.post(logout_url, headers=headers)
 
-        # Loguear la respuesta para depuración
         logger.info(f"Response from Keycloak: {response.status_code}, {response.text}")
 
-        if response.status_code == 204:  # No Content
+        if response.status_code == 204:  
             return {"message": "Logout exitoso."}
         else:
             raise HTTPException(status_code=response.status_code, detail="Error al cerrar sesión.")
