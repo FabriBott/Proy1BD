@@ -5,6 +5,8 @@ from typing import Optional
 
 import asyncpg
 from http.client import HTTPException
+
+from pymongo import MongoClient
 from fastapi import FastAPI, Form
 
 import uvicorn
@@ -13,15 +15,16 @@ from pydantic import BaseModel
 from jose import JWTError
 import requests
 import redis
+from pymongo import MongoClient
+from contextlib import asynccontextmanager
 
 from DB import init_databases
 from CRUD.Usuario import crear_usuario
-from models import *
 
 ##Publicacion
-from models.publicacion_schema import PublicacionCreate
+from models.publicacion_schema import Comentario, PublicacionCreate
 from models.Publicacion import Publicacion
-from CRUD.Publicacion import crear_publicacion, obtener_publicacion_por_id, obtener_publicaciones
+from CRUD.Publicacion import agregar_comentarioM, agregar_reaccionM, crear_publicacion, dar_likeM, obtener_publicacion_por_id, obtener_publicacion_por_idM, obtener_publicaciones,crear_publicacionM, obtener_publicacionesM
 
 
 ##Lugar
@@ -52,6 +55,7 @@ from fastapi.security import OAuth2PasswordBearer
 import logging
 
 
+#Todo: remove before deployment
 # REDIS
 from DB.redis import init_redis
 from fastapi import Response  
@@ -69,17 +73,63 @@ REALM_NAME = "TestApp"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
 
+# Redis
+redis_host = os.getenv("REDIS_HOST")
+redis_port = os.getenv("REDIS_PORT")
+
+# MongoDB
+mongo_host = os.getenv("MONGO_HOST")
+mongo_port = os.getenv("MONGO_PORT")
+mongo_initdb_root_username = os.getenv("MONGO_INITDB_ROOT_USERNAME")
+mongo_initdb_root_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
+
+# Keycloak
+keycloak_server_url = os.getenv("KEYCLOAK_SERVER_URL")
+keycloak_realm = os.getenv("KEYCLOAK_REALM")
+keycloak_client_id = os.getenv("KEYCLOAK_CLIENT_ID")
+keycloak_client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")
+keycloack_admin_user = os.getenv("KEYCLOAK_ADMIN_USER")
+keycloack_admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
+keycloak_admincli_user = os.getenv("KEYCLOAK_ADMINCLI_USER")
+
 x = os.getenv("Nombre")
 
-app = FastAPI()
+# MongoDB
+mongo_host = os.getenv("MONGO_HOST")
+mongo_port = os.getenv("MONGO_PORT")
+mongo_initdb_root_username = os.getenv("MONGO_INITDB_ROOT_USERNAME")
+mongo_initdb_root_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
 
+# Keycloak
+keycloak_server_url = os.getenv("KEYCLOAK_SERVER_URL")
+keycloak_realm = os.getenv("KEYCLOAK_REALM")
+keycloak_client_id = os.getenv("KEYCLOAK_CLIENT_ID")
+keycloak_client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")
+keycloack_admin_user = os.getenv("KEYCLOAK_ADMIN_USER")
+keycloack_admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
+keycloak_admincli_user = os.getenv("KEYCLOAK_ADMINCLI_USER")
+
+#Global variables for the app
+connections = {}
 tokenAdministrativo = None
 
-@app.on_event("startup")
-async def startup():
-    init_databases()
+# -------------------Ciclo de vida de la aplicación-------------------#
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Código que se ejecuta al iniciar la aplicación (startup)
+    logger.debug("Entrando al startup")
+    global connections
+    connections = init_databases()
+    
+    # Se ejecuta el resto de la aplicación
+    yield
 
+    # Código que se ejecuta al cerrar la aplicación (shutdown)
+    logger.debug("Cerrando conexiones")
+    #Liberar recursos
 
+#Inicializacion del app con el ciclo de vida especificado
+app = FastAPI(lifespan=lifespan)
 
 @app.post("/usuarios/")
 async def crear_usuario_endpoint(usuario: UsuarioCreate):
@@ -105,7 +155,6 @@ async def crear_usuario_endpoint(usuario: UsuarioCreate):
     return nuevo_usuario
 
 #----------------------Auth server config----------------------#
-# Configuración de Keycloak
 keycloak_openid = KeycloakOpenID(
     server_url=KEYCLOAK_SERVER_URL,
     client_id="my-app-client",
@@ -126,15 +175,37 @@ keycloak_admin = KeycloakAdmin(
 keycloak_admin.realm_name = "TestApp"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+@app.get("/test")
+def testDB():
+    global connections
+    return {"connections": list(connections.keys())}
 
+#Todo, make the code to test the connections and insertions of data into de DB´s
+@app.post("/test")
+def testDB():
+    global connections
+    return {"connections": list(connections.keys())}
+
+
+#----------------------Endpoints----------------------#
+
+
+'''
+Endpoint para obtener un token de usuario, retorna dicho token si las credenciales son correctas
+error 401 en caso de que el token no sea valido
+'''
 @app.post("/token/", response_model=TokenResponse)
 async def login(username: str = Form(...), password: str = Form(...)):
     try:
         token = keycloak_openid.token(username, password)
         return {"access_token": token['access_token'], "token_type": "bearer"}
-    except Exception as e:
+    except Exception as e: #Hay que manejar las excepciones de una mejor forma
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+'''
+Endpoint que retorna los datos del usuario basado en un token JWT proporcionado por el 
+servicio auth existente
+'''
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         userinfo = keycloak_openid.userinfo(token)
@@ -143,28 +214,25 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         return User(username=userinfo["preferred_username"], email=userinfo["email"])
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error de sistema")
 
-@app.get("/protected/")
-async def protected_route(current_user: User = Depends(get_current_user)):
-    return {"message": f"Hola {current_user.username}, tu acceso ha sido validado."}
-
-# Función para obtener el token administrativo
+'''
+Funcion interna para solicitar un token administrativo al sistema de auth para realizar las acciones
+'''
 def get_admin_token() -> adminToken:
     global tokenAdministrativo
 
-    # URL para obtener el token
     url = "http://keycloak:8080/realms/master/protocol/openid-connect/token"
     data = {
-        "client_id": "admin-cli",
-        "username": "admin",  # Cambiar según sea necesario
-        "password": "admin",  # Cambiar según sea necesario
+        "client_id": keycloak_admincli_user,
+        "username": keycloack_admin_user,
+        "password": keycloack_admin_password,
         "grant_type": "password"
     }
 
-    # Realizar la solicitud POST para obtener el token
     r = requests.post(url, data=data)
 
-    # Verificar si la solicitud fue exitosa
     if r.status_code == 200:
         token_info = r.json()
         tokenAdministrativo = adminToken(
@@ -177,6 +245,7 @@ def get_admin_token() -> adminToken:
     else:
         logger.error(f"Error al obtener el token: {r.status_code} - {r.text}")
         raise HTTPException(status_code=r.status_code, detail="Error al obtener el token")
+
 
 @app.post("/create_user/")
 def create_user(user: NewUser):
@@ -191,14 +260,11 @@ def create_user(user: NewUser):
     # Verificar si el token administrativo está disponible, si no, llamarlo
     if tokenAdministrativo is None:
         try:
-            get_admin_token()  # Llama a la función para obtener el token
+            get_admin_token()
         except HTTPException as e:
             raise HTTPException(status_code=e.status_code, detail="Token administrativo no disponible")
 
-    # URL para crear un nuevo usuario
     url = "http://keycloak:8080/admin/realms/TestApp/users"
-
-    # Datos del nuevo usuario
     data = {
         "username": user.username,
         "email": user.email,
@@ -214,13 +280,11 @@ def create_user(user: NewUser):
         ]
     }
 
-    # Configurar los headers con el token administrativo
     headers = {
         "Authorization": f"Bearer {tokenAdministrativo.access_token}",
         "Content-Type": "application/json"
     }
 
-    # Realizar la solicitud POST para crear el usuario
     response = requests.post(url, json=data, headers=headers)
 
     redis_client.set(f"user:{user.username}", json.dumps(data))  # Ajustar según el formato del usuario creado
@@ -234,6 +298,19 @@ def create_user(user: NewUser):
     else:
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
+
+@app.post("/usuarios/")
+async def crear_usuario_endpoint(usuario: UsuarioCreate):
+    nuevo_usuario = crear_usuario(
+        nombre=usuario.nombre,
+        apellidos=usuario.apellidos,
+        username=usuario.username,
+        password=usuario.password,
+        fechaRegistro=usuario.fechaRegistro
+    )
+    return nuevo_usuario
+
+
 @app.post("/logout/")
 async def logout(token: str = Depends(oauth2_scheme)):
     try:
@@ -243,10 +320,9 @@ async def logout(token: str = Depends(oauth2_scheme)):
         }
         response = requests.post(logout_url, headers=headers)
 
-        # Loguear la respuesta para depuración
         logger.info(f"Response from Keycloak: {response.status_code}, {response.text}")
 
-        if response.status_code == 204:  # No Content
+        if response.status_code == 204:  
             return {"message": "Logout exitoso."}
         else:
             raise HTTPException(status_code=response.status_code, detail="Error al cerrar sesión.")
@@ -254,38 +330,6 @@ async def logout(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-####################################################################################
-#----------------------Endpoints de Publicaciones----------------------#
-@app.post("/crear_publicacion/")
-async def crear_publicacion_endpoint(publicacion: PublicacionCreate):
-    try:
-        nueva_publicacion = crear_publicacion(
-            usuarioId=publicacion.usuarioId,
-            titulo=publicacion.titulo,
-            descripcion=publicacion.descripcion,
-            fechaPublicacion=publicacion.fechaPublicacion
-        )
-        return nueva_publicacion
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.get("/publicaciones/")
-async def get_publicaciones():
-    try:
-        publicaciones = obtener_publicaciones()
-        return publicaciones
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.get("/publicaciones/{publicacion_id}")
-async def get_publicacion(publicacion_id: int):
-    try:
-        publicacion = obtener_publicacion_por_id(publicacion_id)
-        if not publicacion:
-            raise HTTPException(status_code=404, detail="Publicación no encontrada")
-        return publicacion
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 ####################################################################################
 #----------------------Endpoints de Lugares----------------------#
@@ -409,6 +453,107 @@ async def get_viajes_lugares_detallado():
         raise HTTPException(status_code=400, detail=str(e))
         
 ##################################################################################
+#--------------------------Endpoints Mongo----------------------------------------
+##################################################################################
+
+
+
+# Conectar a MongoDB
+client = MongoClient("mongodb://root:root@mongo:27017/")
+
+db = client["redSocial"]
+
+
+# Endpoint para crear una publicación
+@app.post("/mongo/crear_publicacion/")
+async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
+    try:
+        publicacion_id = crear_publicacionM(publicacion, db)
+        return {"message": "Publicación creada exitosamente", "id": publicacion_id}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+@app.get("/mongo/publicaciones/")
+async def get_publicaciones_mongo():
+    try:
+        publicaciones = obtener_publicacionesM(db)  # Aquí pasamos la base de datos
+        if not publicaciones:
+            raise HTTPException(status_code=404, detail="No hay publicaciones disponibles.")
+        return publicaciones
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+
+
+# Endpoint para obtener una publicación por ID
+@app.get("/mongo/publicaciones/{publicacion_id}")
+async def get_publicacion_mongo(publicacion_id: str):
+    try:
+        publicacion = obtener_publicacion_por_idM(publicacion_id, db)
+        if not publicacion:
+            raise HTTPException(status_code=404, detail="Publicación no encontrada")
+        return publicacion
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Endpoint para dar like a una publicación
+@app.post("/mongo/publicaciones/{publicacion_id}/like/")
+async def like_publicacion(publicacion_id: str):
+    try:
+        resultado = dar_likeM(publicacion_id, db)
+        if not resultado:
+            raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo dar 'like'")
+        return {"message": "Like agregado exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+
+
+
+
+# Modelo para el comentario
+class ComentarioCreate(BaseModel):
+    comentario: str
+
+@app.post("/mongo/publicaciones/{publicacion_id}/comentar/")
+async def comentar_publicacion(publicacion_id: str, comentario: ComentarioCreate):
+    try:
+        resultado = agregar_comentarioM(publicacion_id, comentario.comentario, db)
+        if not resultado:
+            raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo agregar el comentario")
+        return {"message": "Comentario agregado exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+class ReaccionCreate(BaseModel):
+    reaccion:str
+
+
+# Endpoint para agregar una reacción a una publicación
+@app.post("/mongo/publicaciones/{publicacion_id}/reaccionar/")
+async def reaccionar_publicacion(publicacion_id: str, reaccion: ReaccionCreate):
+    try:
+        resultado = agregar_reaccionM(publicacion_id, reaccion.reaccion, db)
+        if not resultado:
+            raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo agregar la reacción")
+        return {"message": "Reacción agregada exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
     uvicorn.run(app, port=8000, host="0.0.0.0", reload=True) 

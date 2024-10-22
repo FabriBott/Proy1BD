@@ -6,14 +6,19 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 8000:8000
+    depends_on:
+      - "mongo"
+      - "redis"
+      - "postgres"
+      - "keycloak"
     volumes:
-      - .:/app  # Montar el código en el contenedor para el desarrollo
+      - .:/app  
     environment:
-      - DATABASE_HOST=postgres
-      - DATABASE_PORT=5432
-      - DATABASE_NAME=redSocial
-      - DATABASE_USER=user
-      - DATABASE_PASSWORD=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_NAME=redSocial
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - MONGO_HOST=mongo
@@ -21,9 +26,12 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=root
       - KEYCLOAK_SERVER_URL=http://keycloak:8080/auth
-      - KEYCLOAK_REALM=your-realm-name
-      - KEYCLOAK_CLIENT_ID=your-client-id
-      - KEYCLOAK_CLIENT_SECRET=your-client-secret
+      - KEYCLOAK_REALM=TestApp
+      - KEYCLOAK_CLIENT_ID=my-app-client
+      - KEYCLOAK_CLIENT_SECRET=cliente-secreta
+      - KEYCLOAK_ADMIN_USER=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_ADMINCLI_USER=admin-cli
     networks:
       - default
 

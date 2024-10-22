@@ -12,3 +12,4 @@ def init_mongo():
         return db
     except Exception as e:
         print(f"Error al conectar a MongoDB: {e}")
+        return None
