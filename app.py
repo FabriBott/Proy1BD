@@ -62,7 +62,7 @@ keycloack_admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
 keycloak_admincli_user = os.getenv("KEYCLOAK_ADMINCLI_USER")
 
 #Connections
-connections = None
+connections = {}
 
 app = FastAPI()
 
