@@ -16,7 +16,6 @@ from contextlib import asynccontextmanager
 
 from DB import init_databases
 from CRUD.Usuario import crear_usuario
-from models import *
 
 from models.Usuario import Usuario  
 from models.Usuario import UsuarioCreate
@@ -29,7 +28,6 @@ from fastapi.security import OAuth2PasswordBearer
 import logging
 
 
-# Configuración del logger
 #Todo: remove before deployment
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -61,8 +59,6 @@ keycloack_admin_user = os.getenv("KEYCLOAK_ADMIN_USER")
 keycloack_admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
 keycloak_admincli_user = os.getenv("KEYCLOAK_ADMINCLI_USER")
 
-#Connections
-connections = None
 
 # MongoDB
 mongo_host = os.getenv("MONGO_HOST")
@@ -79,7 +75,7 @@ keycloack_admin_user = os.getenv("KEYCLOAK_ADMIN_USER")
 keycloack_admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
 keycloak_admincli_user = os.getenv("KEYCLOAK_ADMINCLI_USER")
 
-# Connections
+#Global variables for the app
 connections = {}
 tokenAdministrativo = None
 
@@ -96,9 +92,9 @@ async def lifespan(app: FastAPI):
 
     # Código que se ejecuta al cerrar la aplicación (shutdown)
     logger.debug("Cerrando conexiones")
-    # Aquí puedes liberar las conexiones si es necesario
-    # Ejemplo: connections.close() (dependiendo de cómo se implementa `init_databases`)
+    #Liberar recursos
 
+#Inicializacion del app con el ciclo de vida especificado
 app = FastAPI(lifespan=lifespan)
 
 
@@ -128,6 +124,7 @@ def testDB():
     global connections
     return {"connections": list(connections.keys())}
 
+#Todo, make the code to test the connections and insertions of data into de DB´s
 @app.post("/test")
 def testDB():
     global connections
@@ -135,15 +132,24 @@ def testDB():
 
 
 #----------------------Endpoints----------------------#
+
+
+'''
+Endpoint para obtener un token de usuario, retorna dicho token si las credenciales son correctas
+error 401 en caso de que el token no sea valido
+'''
 @app.post("/token/", response_model=TokenResponse)
 async def login(username: str = Form(...), password: str = Form(...)):
     try:
         token = keycloak_openid.token(username, password)
         return {"access_token": token['access_token'], "token_type": "bearer"}
-    except Exception as e:
+    except Exception as e: #Hay que manejar las excepciones de una mejor forma
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-
+'''
+Endpoint que retorna los datos del usuario basado en un token JWT proporcionado por el 
+servicio auth existente
+'''
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         userinfo = keycloak_openid.userinfo(token)
@@ -152,22 +158,20 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         return User(username=userinfo["preferred_username"], email=userinfo["email"])
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error de sistema")
 
-
-@app.get("/protected/")
-async def protected_route(current_user: User = Depends(get_current_user)):
-    return {"message": f"Hola {current_user.username}, tu acceso ha sido validado."}
-
-
-# Función para obtener el token administrativo
+'''
+Funcion interna para solicitar un token administrativo al sistema de auth para realizar las acciones
+'''
 def get_admin_token() -> adminToken:
     global tokenAdministrativo
 
     url = "http://keycloak:8080/realms/master/protocol/openid-connect/token"
     data = {
-        "client_id": "admin-cli",
-        "username": "admin",
-        "password": "admin",
+        "client_id": keycloak_admincli_user,
+        "username": keycloack_admin_user,
+        "password": keycloack_admin_password,
         "grant_type": "password"
     }
 
