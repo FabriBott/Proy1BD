@@ -6,11 +6,11 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 8000:8000
-    depends on:
+    depends_on:
       - "mongo"
       - "redis"
       - "postgres"
-      - "keycloack"
+      - "keycloak"
     volumes:
       - .:/app  
     environment:

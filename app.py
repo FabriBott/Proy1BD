@@ -72,6 +72,8 @@ tokenAdministrativo = None
 async def startup():
     global connections
     connections = init_databases()
+    
+    
 
 
 

@@ -1,8 +1,8 @@
 CREATE DATABASE RedSocial
     WITH 
     ENCODING = 'UTF8'
-    LC_COLLATE = 'es_ES.UTF-8'
-    LC_CTYPE = 'es_ES.UTF-8'
+    LC_COLLATE = 'en_US.utf8'
+    LC_CTYPE = 'en_US.utf8'
     TABLESPACE = pg_default
     CONNECTION LIMIT = -1;
 
