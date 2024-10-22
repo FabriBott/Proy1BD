@@ -11,12 +11,13 @@ from pydantic import BaseModel
 from jose import JWTError
 import requests
 import redis
+from pymongo import MongoClient
 
 from DB import init_databases
 from CRUD.Usuario import crear_usuario
 from models import *
 
-from models.Usuario import Usuario  # Importar la clase Usuario, no el módulo
+from models.Usuario import Usuario  
 from models.Usuario import UsuarioCreate
 from models.response import TokenResponse
 from models.createUser import UserCreate
@@ -27,16 +28,11 @@ from keycloak import KeycloakError, KeycloakOpenID, KeycloakAdmin
 from fastapi.security import OAuth2PasswordBearer
 import logging
 
+
 # Configuración del logger
 #Todo: remove before deployment
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Configuración de Keycloak
-KEYCLOAK_SERVER_URL = "http://keycloak:8080/auth"
-REALM_NAME = "TestApp"
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin"
 
 #Env variables
 # PostgreSQL
@@ -61,8 +57,12 @@ keycloak_server_url = os.getenv("KEYCLOAK_SERVER_URL")
 keycloak_realm = os.getenv("KEYCLOAK_REALM")
 keycloak_client_id = os.getenv("KEYCLOAK_CLIENT_ID")
 keycloak_client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")
+keycloack_admin_user = os.getenv("KEYCLOAK_ADMIN_USER")
+keycloack_admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
+keycloak_admincli_user = os.getenv("KEYCLOAK_ADMINCLI_USER")
 
-
+#Connections
+connections = None
 
 app = FastAPI()
 
@@ -70,44 +70,38 @@ tokenAdministrativo = None
 
 @app.on_event("startup")
 async def startup():
-    init_databases()
+    global connections
+    connections = init_databases()
 
 
 
-@app.post("/usuarios/")
-async def crear_usuario_endpoint(usuario: UsuarioCreate):
-    nuevo_usuario = crear_usuario(
-        nombre=usuario.nombre,
-        apellidos=usuario.apellidos,
-        username=usuario.username,
-        password=usuario.password,
-        fechaRegistro=usuario.fechaRegistro
-    )
-    return nuevo_usuario
+
 
 #----------------------Auth server config----------------------#
 # Configuración de Keycloak
 keycloak_openid = KeycloakOpenID(
-    server_url=KEYCLOAK_SERVER_URL,
-    client_id="my-app-client",
-    realm_name=REALM_NAME,
-    client_secret_key="cliente-secreta"
+    server_url=keycloak_server_url,
+    client_id=keycloak_client_id,
+    realm_name=keycloak_realm,
+    client_secret_key=keycloak_client_secret
 )
 
 keycloak_admin = KeycloakAdmin(
     server_url="http://keycloak:8080/admin/realms/",
-    username=ADMIN_USERNAME,
-    password=ADMIN_PASSWORD,
-    realm_name="master",
-    client_id="admin-cli",
-    client_secret_key="cliente-secreta",
+    username=keycloack_admin_user,
+    password=keycloack_admin_password,
+    realm_name=keycloak_realm,
+    client_id=keycloak_admincli_user,
+    client_secret_key=keycloak_client_secret,
     verify=True
 )
 
-keycloak_admin.realm_name = "TestApp"
+keycloak_admin.realm_name = keycloak_realm
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
+
+#----------------------Endpoints----------------------#
 @app.post("/token/", response_model=TokenResponse)
 async def login(username: str = Form(...), password: str = Form(...)):
     try:
@@ -198,11 +192,25 @@ def create_user(user: NewUser):
     # Realizar la solicitud POST para crear el usuario
     response = requests.post(url, json=data, headers=headers)
 
+    #Enviar solicitud a postgres
+
     # Verificar la respuesta
     if response.status_code == 201:
         return {"message": "Usuario creado exitosamente"}
     else:
         raise HTTPException(status_code=response.status_code, detail=response.text)
+
+@app.post("/usuarios/")
+async def crear_usuario_endpoint(usuario: UsuarioCreate):
+    nuevo_usuario = crear_usuario(
+        nombre=usuario.nombre,
+        apellidos=usuario.apellidos,
+        username=usuario.username,
+        password=usuario.password,
+        fechaRegistro=usuario.fechaRegistro
+    )
+    return nuevo_usuario
+
 
 @app.post("/logout/")
 async def logout(token: str = Depends(oauth2_scheme)):

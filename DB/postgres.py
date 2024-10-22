@@ -20,6 +20,7 @@ def init_postgres():
         # Verificar la conexión
         conn = engine.connect()
         print("Conectado exitosamente a PostgreSQL con SQLAlchemy")
-        conn.close()
+        return conn
     except Exception as e:
         print(f"Error al conectar a PostgreSQL: {e}")
+        return None

@@ -29,6 +29,9 @@ services:
       - KEYCLOAK_REALM=TestApp
       - KEYCLOAK_CLIENT_ID=my-app-client
       - KEYCLOAK_CLIENT_SECRET=cliente-secreta
+      - KEYCLOAK_ADMIN_USER=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_ADMINCLI_USER=admin-cli
     networks:
       - default
 

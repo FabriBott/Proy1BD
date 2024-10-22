@@ -11,5 +11,7 @@ def init_redis():
         )
         redis_client.ping()
         print("Conectado exitosamente a Redis")
+        return redis_client
     except Exception as e:
         print(f"Error al conectar a Redis: {e}")
+        return None
