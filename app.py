@@ -265,27 +265,44 @@ async def crear_publicacion_endpoint(publicacion: PublicacionCreate):
             descripcion=publicacion.descripcion,
             fechaPublicacion=publicacion.fechaPublicacion
         )
+        # Actualiza la caché de publicaciones populares
+        redis_client.delete("publicaciones_populares")  # Borra el caché antiguo
         return nueva_publicacion
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.get("/publicaciones/")
 async def get_publicaciones():
+    cached_publicaciones = redis_client.get("publicaciones_populares")
+    if cached_publicaciones:
+        logger.info("Publicaciones populares recuperadas de la caché.")
+        return json.loads(cached_publicaciones)
     try:
         publicaciones = obtener_publicaciones()
+        # Almacena las publicaciones en caché
+        redis_client.set("publicaciones_populares", json.dumps(publicaciones))
         return publicaciones
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/publicaciones/{publicacion_id}")
 async def get_publicacion(publicacion_id: int):
+    cached_publicacion = redis_client.get(f"publicacion:{publicacion_id}")
+    if cached_publicacion:
+        logger.info(f"Publicación {publicacion_id} recuperada de la caché.")
+        return json.loads(cached_publicacion)
+
     try:
         publicacion = obtener_publicacion_por_id(publicacion_id)
         if not publicacion:
             raise HTTPException(status_code=404, detail="Publicación no encontrada")
+        # Almacena la publicación en caché
+        redis_client.set(f"publicacion:{publicacion_id}", json.dumps(publicacion))
         return publicacion
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 ####################################################################################
 #----------------------Endpoints de Lugares----------------------#
