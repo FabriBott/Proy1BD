@@ -86,11 +86,11 @@ async def startup():
 @app.post("/usuarios/")
 async def crear_usuario_endpoint(usuario: UsuarioCreate):
     
-    # # Verificar si el usuario ya está en caché
-    # cached_user = redis_client.get(f"user:{usuario.username}")
-    # if cached_user:
-    #     logger.info(f"Usuario {usuario.username} recuperado de la caché.")
-    #     return json.loads(cached_user)  # Convertir de JSON a dict
+    # Verificar si el usuario ya está en caché
+    cached_user = redis_client.get(f"user:{usuario.username}")
+    if cached_user:
+       logger.info(f"Usuario {usuario.username} recuperado de la caché.")
+       return json.loads(cached_user)  # Convertir de JSON a dict
 
     nuevo_usuario = crear_usuario(
         nombre=usuario.nombre,
@@ -100,9 +100,9 @@ async def crear_usuario_endpoint(usuario: UsuarioCreate):
         fechaRegistro=usuario.fechaRegistro
     )
 
-    # # Guardar el nuevo usuario en caché
-    # redis_client.set(f"user:{usuario.username}", json.dumps(nuevo_usuario))
-    # logger.info(f"Usuario {usuario.username} almacenado en caché.")
+    # Guardar el nuevo usuario en caché
+    redis_client.set(f"user:{usuario.username}", json.dumps(nuevo_usuario))
+    logger.info(f"Usuario {usuario.username} almacenado en caché.")
 
     return nuevo_usuario
 
@@ -184,11 +184,11 @@ def get_admin_token() -> adminToken:
 def create_user(user: NewUser):
     global tokenAdministrativo  # Usar la variable global
 
-    # # Verificar si el usuario ya está en caché
-    # cached_user = redis_client.get(f"user:{user.username}")
-    # if cached_user:
-    #     logger.info(f"Usuario {user.username} recuperado de la caché.")
-    #     return json.loads(cached_user)
+     # Verificar si el usuario ya está en caché
+    cached_user = redis_client.get(f"user:{user.username}")
+    if cached_user:
+        logger.info(f"Usuario {user.username} recuperado de la caché.")
+        return json.loads(cached_user)
 
     # Verificar si el token administrativo está disponible, si no, llamarlo
     if tokenAdministrativo is None:
@@ -225,8 +225,8 @@ def create_user(user: NewUser):
     # Realizar la solicitud POST para crear el usuario
     response = requests.post(url, json=data, headers=headers)
 
-    # redis_client.set(f"user:{user.username}", json.dumps(data))  # Ajustar según el formato del usuario creado
-    # logger.info(f"Usuario {user.username} almacenado en caché.")
+    redis_client.set(f"user:{user.username}", json.dumps(data))  # Ajustar según el formato del usuario creado
+    logger.info(f"Usuario {user.username} almacenado en caché.")
 
     # Verificar la respuesta
     if response.status_code == 201:
@@ -442,6 +442,7 @@ db = client["redSocial"]
 async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
     try:
         publicacion_id = crear_publicacionM(publicacion, db)
+        redis_client.delete("publicaciones")  # Invalidar caché de publicaciones
         return {"message": "Publicación creada exitosamente", "id": publicacion_id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -451,9 +452,14 @@ async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
 @app.get("/mongo/publicaciones/")
 async def get_publicaciones_mongo():
     try:
+        cached_publicaciones = redis_client.get("publicaciones")
+        if cached_publicaciones:
+            return cached_publicaciones  # Devolver publicaciones cacheadas
+
         publicaciones = obtener_publicacionesM(db)  # Aquí pasamos la base de datos
         if not publicaciones:
             raise HTTPException(status_code=404, detail="No hay publicaciones disponibles.")
+        redis_client.set("publicaciones", publicaciones)  # Cachear publicaciones
         return publicaciones
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
@@ -461,13 +467,18 @@ async def get_publicaciones_mongo():
 
 
 
-# Endpoint para obtener una publicación por ID
-@app.get("/mongo/publicaciones/{publicacion_id}")
+# Endpoint para obtener una publicación por ID@app.get("/mongo/publicaciones/{publicacion_id}")
 async def get_publicacion_mongo(publicacion_id: str):
     try:
+        cached_publicacion = redis_client.get(f"publicacion:{publicacion_id}")
+        if cached_publicacion:
+            return cached_publicacion  # Devolver publicación cacheada
+
         publicacion = obtener_publicacion_por_idM(publicacion_id, db)
         if not publicacion:
             raise HTTPException(status_code=404, detail="Publicación no encontrada")
+        
+        redis_client.set(f"publicacion:{publicacion_id}", publicacion)  # Cachear publicación
         return publicacion
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -479,9 +490,13 @@ async def like_publicacion(publicacion_id: str):
         resultado = dar_likeM(publicacion_id, db)
         if not resultado:
             raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo dar 'like'")
+        
+        redis_client.delete(f"publicacion:{publicacion_id}")  # Invalidar caché de publicación
+        redis_client.delete("publicaciones")  # Invalidar caché de publicaciones
         return {"message": "Like agregado exitosamente"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 
 
@@ -500,6 +515,9 @@ async def comentar_publicacion(publicacion_id: str, comentario: ComentarioCreate
         resultado = agregar_comentarioM(publicacion_id, comentario.comentario, db)
         if not resultado:
             raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo agregar el comentario")
+        
+        # Invalidar caché de comentarios para la publicación
+        redis_client.delete(f"comentarios:{publicacion_id}")
         return {"message": "Comentario agregado exitosamente"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -517,6 +535,9 @@ async def reaccionar_publicacion(publicacion_id: str, reaccion: ReaccionCreate):
         resultado = agregar_reaccionM(publicacion_id, reaccion.reaccion, db)
         if not resultado:
             raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo agregar la reacción")
+        
+        # Invalidar caché de comentarios y reacciones para la publicación
+        redis_client.delete(f"comentarios:{publicacion_id}")
         return {"message": "Reacción agregada exitosamente"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
