@@ -1,8 +1,9 @@
 from models import Usuario
 from DB.postgres import SessionLocal
 
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from models.Usuario import UsuarioCreate  # Tu modelo Pydantic
+from models.usuario_schema import UsuarioCreate  # Tu modelo Pydantic
 from datetime import datetime
 
 from DB.postgres import SessionLocal

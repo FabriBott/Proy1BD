@@ -83,10 +83,10 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: redSocial
+      POSTGRES_DB: RedSocial
     volumes:
       - postgres_data:/var/lib/postgresql/data  
-      - ./DB/postgres:/docker-entrypoint-initdb.d/ 
+      - ./DB/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   pgadmin:
       image: dpage/pgadmin4:latest

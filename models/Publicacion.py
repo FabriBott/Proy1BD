@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, ForeignKey
-from db.postgres import Base
+from DB.postgres import Base
 from sqlalchemy.orm import relationship
 
 class Publicacion(Base):

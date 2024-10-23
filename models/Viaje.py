@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Date, ForeignKey
-from db.postgres import Base
+from DB.postgres import Base
 from sqlalchemy.orm import relationship
 
 class Viaje(Base):
@@ -10,7 +10,7 @@ class Viaje(Base):
     fechaInicio = Column(Date, nullable=False)
     fechaFinal = Column(Date)
 
-    # Relación con usuario
+    # Relación con usuario (cadena de texto)
     usuario = relationship("Usuario", back_populates="viajes")
-    # Relación con lugares (muchos a muchos)
-    viajes_lugares = relationship("ViajeLugar", back_populates="viaje")
+    # Relación con lugares
+    viajes_lugares = relationship("ViajeLugar", back_populates="viaje", cascade="all, delete")
