@@ -5,6 +5,8 @@ from typing import Optional
 
 import asyncpg
 from http.client import HTTPException
+
+from pymongo import MongoClient
 from fastapi import FastAPI, Form
 
 import uvicorn
@@ -19,9 +21,9 @@ from CRUD.Usuario import crear_usuario
 from models import *
 
 ##Publicacion
-from models.publicacion_schema import PublicacionCreate
+from models.publicacion_schema import Comentario, PublicacionCreate
 from models.Publicacion import Publicacion
-from CRUD.Publicacion import crear_publicacion, obtener_publicacion_por_id, obtener_publicaciones
+from CRUD.Publicacion import agregar_comentarioM, agregar_reaccionM, crear_publicacion, dar_likeM, obtener_publicacion_por_id, obtener_publicacion_por_idM, obtener_publicaciones,crear_publicacionM, obtener_publicacionesM
 
 
 ##Lugar
@@ -252,7 +254,7 @@ async def logout(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-####################################################################################
+
 #----------------------Endpoints de Publicaciones----------------------#
 @app.post("/crear_publicacion/")
 async def crear_publicacion_endpoint(publicacion: PublicacionCreate):
@@ -424,6 +426,107 @@ async def get_viajes_lugares_detallado():
         raise HTTPException(status_code=400, detail=str(e))
         
 ##################################################################################
+#--------------------------Endpoints Mongo----------------------------------------
+##################################################################################
+
+
+
+# Conectar a MongoDB
+client = MongoClient("mongodb://root:root@mongo:27017/")
+
+db = client["redSocial"]
+
+
+# Endpoint para crear una publicación
+@app.post("/mongo/crear_publicacion/")
+async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
+    try:
+        publicacion_id = crear_publicacionM(publicacion, db)
+        return {"message": "Publicación creada exitosamente", "id": publicacion_id}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+@app.get("/mongo/publicaciones/")
+async def get_publicaciones_mongo():
+    try:
+        publicaciones = obtener_publicacionesM(db)  # Aquí pasamos la base de datos
+        if not publicaciones:
+            raise HTTPException(status_code=404, detail="No hay publicaciones disponibles.")
+        return publicaciones
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+
+
+# Endpoint para obtener una publicación por ID
+@app.get("/mongo/publicaciones/{publicacion_id}")
+async def get_publicacion_mongo(publicacion_id: str):
+    try:
+        publicacion = obtener_publicacion_por_idM(publicacion_id, db)
+        if not publicacion:
+            raise HTTPException(status_code=404, detail="Publicación no encontrada")
+        return publicacion
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Endpoint para dar like a una publicación
+@app.post("/mongo/publicaciones/{publicacion_id}/like/")
+async def like_publicacion(publicacion_id: str):
+    try:
+        resultado = dar_likeM(publicacion_id, db)
+        if not resultado:
+            raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo dar 'like'")
+        return {"message": "Like agregado exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+
+
+
+
+# Modelo para el comentario
+class ComentarioCreate(BaseModel):
+    comentario: str
+
+@app.post("/mongo/publicaciones/{publicacion_id}/comentar/")
+async def comentar_publicacion(publicacion_id: str, comentario: ComentarioCreate):
+    try:
+        resultado = agregar_comentarioM(publicacion_id, comentario.comentario, db)
+        if not resultado:
+            raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo agregar el comentario")
+        return {"message": "Comentario agregado exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+class ReaccionCreate(BaseModel):
+    reaccion:str
+
+
+# Endpoint para agregar una reacción a una publicación
+@app.post("/mongo/publicaciones/{publicacion_id}/reaccionar/")
+async def reaccionar_publicacion(publicacion_id: str, reaccion: ReaccionCreate):
+    try:
+        resultado = agregar_reaccionM(publicacion_id, reaccion.reaccion, db)
+        if not resultado:
+            raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo agregar la reacción")
+        return {"message": "Reacción agregada exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
     uvicorn.run(app, port=8000, host="0.0.0.0", reload=True) 
