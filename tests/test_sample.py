@@ -10,9 +10,9 @@ client = TestClient(app)
 # Test para el endpoint de login (token)
 @pytest.mark.asyncio
 async def test_login_success():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.post("/token/", data={"username": "test_user", "password": "test_password"})
-    assert response.status_code == 401 # 200
+    async with AsyncClient(app=app, base_url="http://localhost:8000") as ac:
+        response = await ac.post("/token/", data={"username": "admin_user", "password": "AdminPassword"})
+    assert response.status_code == 200
     #assert "access_token" in response.json()
 
 @pytest.mark.asyncio
@@ -36,6 +36,6 @@ async def test_token_verification_invalid_token():
     token = "invalid_token_here"
     
     headers = {"Authorization": f"Bearer {token}"}
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.get("/protected-endpoint/", headers=headers)  # Reemplaza con el endpoint protegido
-    assert response.status_code == 404 # 401
+    async with AsyncClient(app=app, base_url="http://localhost:8000") as ac:
+        response = await ac.get("/protected/", headers=headers)  # Reemplaza con el endpoint protegido
+    assert response.status_code == 401 # 401

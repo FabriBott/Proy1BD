@@ -109,6 +109,7 @@ async def login(username: str = Form(...), password: str = Form(...)):
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+@app.post("/user_info")
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         userinfo = keycloak_openid.userinfo(token)
