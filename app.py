@@ -48,7 +48,6 @@ from models.response import TokenResponse
 from models.createUser import UserCreate
 from models.user import User
 from models.adminToken import adminToken
-from models.newUser import NewUser
 from keycloak import KeycloakError, KeycloakOpenID, KeycloakAdmin
 from fastapi.security import OAuth2PasswordBearer
 import logging
@@ -77,34 +76,35 @@ app = FastAPI()
 
 tokenAdministrativo = None
 
-@app.on_event("startup")
-async def startup():
-    init_databases()
+#@app.on_event("startup")
+#async def startup():
+#    init_databases()
 
 
+#Volarse este
+#@app.post("/usuarios/")
+#async def crear_usuario_endpoint(usuario: UsuarioCreate):
+#    
+#    # Verificar si el usuario ya está en caché
+#    cached_user = redis_client.get(f"user:{usuario.username}")
+#    if cached_user:
+#        logger.info(f"Usuario {usuario.username} recuperado de la caché.")
+#        return json.loads(cached_user)  # Convertir de JSON a dict
+#
+#    nuevo_usuario = crear_usuario(
+#        nombre=usuario.nombre,
+#        apellidos=usuario.apellidos,
+#        username=usuario.username,
+#        password=usuario.password,
+#        fechaRegistro=usuario.fechaRegistro
+#    )
+#
+#    # Guardar el nuevo usuario en caché
+#  redis_client.set(f"user:{usuario.username}", json.dumps(nuevo_usuario))
+#   logger.info(f"Usuario {usuario.username} almacenado en caché.")
+#
+#    return nuevo_usuario
 
-@app.post("/usuarios/")
-async def crear_usuario_endpoint(usuario: UsuarioCreate):
-    
-    # Verificar si el usuario ya está en caché
-    cached_user = redis_client.get(f"user:{usuario.username}")
-    if cached_user:
-       logger.info(f"Usuario {usuario.username} recuperado de la caché.")
-       return json.loads(cached_user)  # Convertir de JSON a dict
-
-    nuevo_usuario = crear_usuario(
-        nombre=usuario.nombre,
-        apellidos=usuario.apellidos,
-        username=usuario.username,
-        password=usuario.password,
-        fechaRegistro=usuario.fechaRegistro
-    )
-
-    # Guardar el nuevo usuario en caché
-    redis_client.set(f"user:{usuario.username}", json.dumps(nuevo_usuario))
-    logger.info(f"Usuario {usuario.username} almacenado en caché.")
-
-    return nuevo_usuario
 
 #----------------------Auth server config----------------------#
 # Configuración de Keycloak
@@ -175,16 +175,17 @@ def get_admin_token() -> adminToken:
             token_type=token_info.get("token_type")
         )
         logger.info("Token administrativo obtenido exitosamente.")
+        redis_client.set(f"adminToken", tokenAdministrativo)
         return tokenAdministrativo
     else:
         logger.error(f"Error al obtener el token: {r.status_code} - {r.text}")
         raise HTTPException(status_code=r.status_code, detail="Error al obtener el token")
 
 @app.post("/create_user/")
-def create_user(user: NewUser):
+def create_user(user: UserCreate):
     global tokenAdministrativo  # Usar la variable global
 
-     # Verificar si el usuario ya está en caché
+    # Verificar si el usuario ya está en caché
     cached_user = redis_client.get(f"user:{user.username}")
     if cached_user:
         logger.info(f"Usuario {user.username} recuperado de la caché.")
@@ -204,9 +205,9 @@ def create_user(user: NewUser):
     data = {
         "username": user.username,
         "email": user.email,
-        "firstName": user.firstName,
-        "lastName": user.lastName,
-        "enabled": user.enabled,
+        "firstName": user.firstname,
+        "lastName": user.lastname,
+        "enabled": True,
         "credentials": [
             {
                 "type": "password",
@@ -227,6 +228,17 @@ def create_user(user: NewUser):
 
     redis_client.set(f"user:{user.username}", json.dumps(data))  # Ajustar según el formato del usuario creado
     logger.info(f"Usuario {user.username} almacenado en caché.")
+
+
+    crear_usuario(
+        nombre=user.firstname,
+        apellidos=user.lastname,
+        username=user.username,
+        password=user.password,
+        fechaRegistro=user.fechaRegistro
+    )
+
+    # return {"message": "Usuario creado exitosamente"}
 
     # Verificar la respuesta
     if response.status_code == 201:
@@ -253,55 +265,6 @@ async def logout(token: str = Depends(oauth2_scheme)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
-#----------------------Endpoints de Publicaciones----------------------#
-@app.post("/crear_publicacion/")
-async def crear_publicacion_endpoint(publicacion: PublicacionCreate):
-    try:
-        nueva_publicacion = crear_publicacion(
-            usuarioId=publicacion.usuarioId,
-            titulo=publicacion.titulo,
-            descripcion=publicacion.descripcion,
-            fechaPublicacion=publicacion.fechaPublicacion
-        )
-        # Actualiza la caché de publicaciones populares
-        redis_client.delete("publicaciones_populares")  # Borra el caché antiguo
-        return nueva_publicacion
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.get("/publicaciones/")
-async def get_publicaciones():
-    cached_publicaciones = redis_client.get("publicaciones_populares")
-    if cached_publicaciones:
-        logger.info("Publicaciones populares recuperadas de la caché.")
-        return json.loads(cached_publicaciones)
-    try:
-        publicaciones = obtener_publicaciones()
-        # Almacena las publicaciones en caché
-        redis_client.set("publicaciones_populares", json.dumps(publicaciones))
-        return publicaciones
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.get("/publicaciones/{publicacion_id}")
-async def get_publicacion(publicacion_id: int):
-    cached_publicacion = redis_client.get(f"publicacion:{publicacion_id}")
-    if cached_publicacion:
-        logger.info(f"Publicación {publicacion_id} recuperada de la caché.")
-        return json.loads(cached_publicacion)
-
-    try:
-        publicacion = obtener_publicacion_por_id(publicacion_id)
-        if not publicacion:
-            raise HTTPException(status_code=404, detail="Publicación no encontrada")
-        # Almacena la publicación en caché
-        redis_client.set(f"publicacion:{publicacion_id}", json.dumps(publicacion))
-        return publicacion
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 ####################################################################################
@@ -442,7 +405,6 @@ db = client["redSocial"]
 async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
     try:
         publicacion_id = crear_publicacionM(publicacion, db)
-        redis_client.delete("publicaciones")  # Invalidar caché de publicaciones
         return {"message": "Publicación creada exitosamente", "id": publicacion_id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -452,14 +414,9 @@ async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
 @app.get("/mongo/publicaciones/")
 async def get_publicaciones_mongo():
     try:
-        cached_publicaciones = redis_client.get("publicaciones")
-        if cached_publicaciones:
-            return cached_publicaciones  # Devolver publicaciones cacheadas
-
         publicaciones = obtener_publicacionesM(db)  # Aquí pasamos la base de datos
         if not publicaciones:
             raise HTTPException(status_code=404, detail="No hay publicaciones disponibles.")
-        redis_client.set("publicaciones", publicaciones)  # Cachear publicaciones
         return publicaciones
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
@@ -467,18 +424,13 @@ async def get_publicaciones_mongo():
 
 
 
-# Endpoint para obtener una publicación por ID@app.get("/mongo/publicaciones/{publicacion_id}")
+# Endpoint para obtener una publicación por ID
+@app.get("/mongo/publicaciones/{publicacion_id}")
 async def get_publicacion_mongo(publicacion_id: str):
     try:
-        cached_publicacion = redis_client.get(f"publicacion:{publicacion_id}")
-        if cached_publicacion:
-            return cached_publicacion  # Devolver publicación cacheada
-
         publicacion = obtener_publicacion_por_idM(publicacion_id, db)
         if not publicacion:
             raise HTTPException(status_code=404, detail="Publicación no encontrada")
-        
-        redis_client.set(f"publicacion:{publicacion_id}", publicacion)  # Cachear publicación
         return publicacion
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -490,13 +442,9 @@ async def like_publicacion(publicacion_id: str):
         resultado = dar_likeM(publicacion_id, db)
         if not resultado:
             raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo dar 'like'")
-        
-        redis_client.delete(f"publicacion:{publicacion_id}")  # Invalidar caché de publicación
-        redis_client.delete("publicaciones")  # Invalidar caché de publicaciones
         return {"message": "Like agregado exitosamente"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
 
 
 
@@ -515,9 +463,6 @@ async def comentar_publicacion(publicacion_id: str, comentario: ComentarioCreate
         resultado = agregar_comentarioM(publicacion_id, comentario.comentario, db)
         if not resultado:
             raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo agregar el comentario")
-        
-        # Invalidar caché de comentarios para la publicación
-        redis_client.delete(f"comentarios:{publicacion_id}")
         return {"message": "Comentario agregado exitosamente"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -535,9 +480,6 @@ async def reaccionar_publicacion(publicacion_id: str, reaccion: ReaccionCreate):
         resultado = agregar_reaccionM(publicacion_id, reaccion.reaccion, db)
         if not resultado:
             raise HTTPException(status_code=404, detail="Publicación no encontrada o no se pudo agregar la reacción")
-        
-        # Invalidar caché de comentarios y reacciones para la publicación
-        redis_client.delete(f"comentarios:{publicacion_id}")
         return {"message": "Reacción agregada exitosamente"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -551,4 +493,3 @@ async def reaccionar_publicacion(publicacion_id: str, reaccion: ReaccionCreate):
 
 if __name__ == "__main__":
     uvicorn.run(app, port=8000, host="0.0.0.0", reload=True) 
-    #Sin reload=True: El servidor no se recarga automáticamente.
