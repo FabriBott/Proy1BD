@@ -11,7 +11,7 @@ from DB.postgres import SessionLocal
 # Función para crear un usuario
 def crear_usuario(nombre, apellidos, username, password, fechaRegistro):
     session = SessionLocal()
-    nuevo_usuario = Usuario(
+    nuevo_usuario = Usuario.Usuario(
         nombre=nombre,
         apellidos=apellidos,
         username=username,

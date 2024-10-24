@@ -2,11 +2,12 @@ from pydantic import BaseModel, EmailStr
 
 class UserCreate(BaseModel):
     username: str
-    email: EmailStr
+    email: str
     password: str
-    lastname: str
     firstname: str
+    lastname: str
     enabled: bool = True
-    credentials: list
+    
+
 
 #Esta clase guarda los datos de Keycloak y de Postgress    
