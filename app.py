@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 from typing import Optional
+import datetime as dt
 
 import asyncpg
 from http.client import HTTPException
@@ -175,7 +176,6 @@ def get_admin_token() -> adminToken:
             token_type=token_info.get("token_type")
         )
         logger.info("Token administrativo obtenido exitosamente.")
-        redis_client.set(f"adminToken", tokenAdministrativo)
         return tokenAdministrativo
     else:
         logger.error(f"Error al obtener el token: {r.status_code} - {r.text}")
@@ -211,7 +211,7 @@ def create_user(user: UserCreate):
         "credentials": [
             {
                 "type": "password",
-                "value": "password123",  # Cambia esta contraseña según sea necesario
+                "value": user.password,  # Cambia esta contraseña según sea necesario
                 "temporary": False
             }
         ]
@@ -235,7 +235,7 @@ def create_user(user: UserCreate):
         apellidos=user.lastname,
         username=user.username,
         password=user.password,
-        fechaRegistro=user.fechaRegistro
+        fechaRegistro=dt.datetime.now()
     )
 
     # return {"message": "Usuario creado exitosamente"}

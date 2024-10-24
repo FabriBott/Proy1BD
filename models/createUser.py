@@ -7,7 +7,7 @@ class UserCreate(BaseModel):
     firstname: str
     lastname: str
     enabled: bool = True
-    credentials: list
+    
 
 
 #Esta clase guarda los datos de Keycloak y de Postgress    
