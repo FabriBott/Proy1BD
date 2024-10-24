@@ -105,6 +105,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 async def login(username: str = Form(...), password: str = Form(...)):
     try:
         token = keycloak_openid.token(username, password)
+        #redis_client.set(f"{username}Token", token['access_token'])
+    
         return {"access_token": token['access_token'], "token_type": "bearer"}
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -337,6 +339,7 @@ db = client["redSocial"]
 async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
     try:
         publicacion_id = crear_publicacionM(publicacion, db)
+        redis_client.delete("publicaciones")  # Invalidar caché de publicaciones
         return {"message": "Publicación creada exitosamente", "id": publicacion_id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -346,9 +349,14 @@ async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
 @app.get("/mongo/publicaciones/")
 async def get_publicaciones_mongo():
     try:
+        cached_publicaciones = redis_client.get("publicaciones")
+        if cached_publicaciones:
+            return cached_publicaciones  # Devolver publicaciones cacheadas
+
         publicaciones = obtener_publicacionesM(db)  # Aquí pasamos la base de datos
         if not publicaciones:
             raise HTTPException(status_code=404, detail="No hay publicaciones disponibles.")
+        redis_client.set("publicaciones", publicaciones)  # Cachear publicaciones
         return publicaciones
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
@@ -360,9 +368,15 @@ async def get_publicaciones_mongo():
 @app.get("/mongo/publicaciones/{publicacion_id}")
 async def get_publicacion_mongo(publicacion_id: str):
     try:
+        cached_publicacion = redis_client.get(f"publicacion:{publicacion_id}")
+        if cached_publicacion:
+            return cached_publicacion  # Devolver publicación cacheada
+
         publicacion = obtener_publicacion_por_idM(publicacion_id, db)
         if not publicacion:
             raise HTTPException(status_code=404, detail="Publicación no encontrada")
+        
+        redis_client.set(f"publicacion:{publicacion_id}", publicacion)  # Cachear publicación
         return publicacion
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -377,12 +391,6 @@ async def like_publicacion(publicacion_id: str):
         return {"message": "Like agregado exitosamente"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-
-
-
-
 
 
 # Modelo para el comentario
