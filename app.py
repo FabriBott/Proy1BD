@@ -65,55 +65,26 @@ redis_client = init_redis()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import Auth
+
 # Configuración de Keycloak
 KEYCLOAK_SERVER_URL = "http://keycloak:8080/auth"
 REALM_NAME = "TestApp"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin"
 
-x = os.getenv("Nombre")
 
 app = FastAPI()
 
 tokenAdministrativo = None
 
-#@app.on_event("startup")
-#async def startup():
-#    init_databases()
-
-
-#Volarse este
-#@app.post("/usuarios/")
-#async def crear_usuario_endpoint(usuario: UsuarioCreate):
-#    
-#    # Verificar si el usuario ya está en caché
-#    cached_user = redis_client.get(f"user:{usuario.username}")
-#    if cached_user:
-#        logger.info(f"Usuario {usuario.username} recuperado de la caché.")
-#        return json.loads(cached_user)  # Convertir de JSON a dict
-#
-#    nuevo_usuario = crear_usuario(
-#        nombre=usuario.nombre,
-#        apellidos=usuario.apellidos,
-#        username=usuario.username,
-#        password=usuario.password,
-#        fechaRegistro=usuario.fechaRegistro
-#    )
-#
-#    # Guardar el nuevo usuario en caché
-#  redis_client.set(f"user:{usuario.username}", json.dumps(nuevo_usuario))
-#   logger.info(f"Usuario {usuario.username} almacenado en caché.")
-#
-#    return nuevo_usuario
-
-
 #----------------------Auth server config----------------------#
 # Configuración de Keycloak
 keycloak_openid = KeycloakOpenID(
     server_url=KEYCLOAK_SERVER_URL,
-    client_id="my-app-client",
+    client_id=os.getenv("KEYCLOAK_CLIENT_ID"),
     realm_name=REALM_NAME,
-    client_secret_key="cliente-secreta"
+    client_secret_key=os.getenv("KEYCLOAK_CLIENT_SECRET")
 )
 
 keycloak_admin = KeycloakAdmin(
@@ -121,12 +92,12 @@ keycloak_admin = KeycloakAdmin(
     username=ADMIN_USERNAME,
     password=ADMIN_PASSWORD,
     realm_name="master",
-    client_id="admin-cli",
-    client_secret_key="cliente-secreta",
+    client_id=os.getenv("KEYCLOAK_ADMINCLI_USER"),
+    client_secret_key=os.getenv("KEYCLOAK_CLIENT_SECRET"),
     verify=True
 )
 
-keycloak_admin.realm_name = "TestApp"
+keycloak_admin.realm_name = REALM_NAME
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
@@ -185,51 +156,13 @@ def get_admin_token() -> adminToken:
 def create_user(user: UserCreate):
     global tokenAdministrativo  # Usar la variable global
 
-    # Verificar si el usuario ya está en caché
-    cached_user = redis_client.get(f"user:{user.username}")
-    if cached_user:
-        logger.info(f"Usuario {user.username} recuperado de la caché.")
-        return json.loads(cached_user)
-
     # Verificar si el token administrativo está disponible, si no, llamarlo
     if tokenAdministrativo is None:
         try:
             get_admin_token()  # Llama a la función para obtener el token
         except HTTPException as e:
             raise HTTPException(status_code=e.status_code, detail="Token administrativo no disponible")
-
-    # URL para crear un nuevo usuario
-    url = "http://keycloak:8080/admin/realms/TestApp/users"
-
-    # Datos del nuevo usuario
-    data = {
-        "username": user.username,
-        "email": user.email,
-        "firstName": user.firstname,
-        "lastName": user.lastname,
-        "enabled": True,
-        "credentials": [
-            {
-                "type": "password",
-                "value": user.password,  # Cambia esta contraseña según sea necesario
-                "temporary": False
-            }
-        ]
-    }
-
-    # Configurar los headers con el token administrativo
-    headers = {
-        "Authorization": f"Bearer {tokenAdministrativo.access_token}",
-        "Content-Type": "application/json"
-    }
-
-    # Realizar la solicitud POST para crear el usuario
-    response = requests.post(url, json=data, headers=headers)
-
-    redis_client.set(f"user:{user.username}", json.dumps(data))  # Ajustar según el formato del usuario creado
-    logger.info(f"Usuario {user.username} almacenado en caché.")
-
-
+    
     crear_usuario(
         nombre=user.firstname,
         apellidos=user.lastname,
@@ -237,14 +170,13 @@ def create_user(user: UserCreate):
         password=user.password,
         fechaRegistro=dt.datetime.now()
     )
-
-    # return {"message": "Usuario creado exitosamente"}
-
-    # Verificar la respuesta
-    if response.status_code == 201:
+    
+    keycloackResponse = Auth.crearUsuario(user, tokenAdministrativo)
+    
+    if keycloackResponse["status_code"] == 201:
         return {"message": "Usuario creado exitosamente"}
     else:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
+        raise HTTPException(status_code=keycloackResponse["status_code"], detail=keycloackResponse["detail"])
 
 @app.post("/logout/")
 async def logout(token: str = Depends(oauth2_scheme)):
