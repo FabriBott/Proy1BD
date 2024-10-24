@@ -11,15 +11,18 @@ COPY pyproject.toml poetry.lock ./
 RUN pip install poetry
 
 # Configura Poetry para crear el entorno virtual en el directorio del proyecto e instala las dependencias
-# Configura Poetry para crear el entorno virtual en el directorio del proyecto
 RUN poetry config virtualenvs.create false
-# Instala las dependencias sin instalar el propio proyecto (--no-root)
 RUN poetry install --no-root --no-interaction --no-ansi
 
 # Copia el resto del código de la aplicación
 COPY . .
 
+# Copiar el script de arranque y darle permisos de ejecución
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Exponer el puerto 8000 para la aplicación
 EXPOSE 8000
 
-CMD ["poetry", "run", "uvicorn", "app:app", "--host=0.0.0.0", "--port=8000"]
+# Usar el script de arranque como el comando principal del contenedor
+ENTRYPOINT ["/entrypoint.sh"]

@@ -47,6 +47,7 @@ def crearUsuario(user: UserCreate, tokenAdministrativo: adminToken):
         "firstName": user.firstname,
         "lastName": user.lastname,
         "enabled": True,
+        "emailVerified": True,
         "credentials": [
             {
                 "type": "password",
