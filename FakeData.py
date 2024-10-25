@@ -60,13 +60,13 @@ for i in range(USERSCOUNT):
     
 for i in range(PLACESCOUNT):
     app.crear_lugar_endpoint(generarLugar())
-    for j in range(random.randint(3,10)):
-        app.asociar_viaje_lugar_endpoint(asociarViajeLugar(i))
+
     
 
 for i in range(POSTSCOUNT):
-    app.crear_viaje_endpoint(generarViaje())
-    
+    app.crear_viaje_endpoint(generarViaje()) #Crea el viaje
+    for j in range(random.randint(3,10)): #Asocia lugares a este viaje
+        app.asociar_viaje_lugar_endpoint(asociarViajeLugar(i))
 
 for i in range(COMMENTSCOUNT):
     
