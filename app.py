@@ -197,7 +197,7 @@ async def logout(token: str = Depends(oauth2_scheme)):
         else:
             raise HTTPException(status_code=response.status_code, detail="Error al cerrar sesión.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Error del servidor.")
 
 
 

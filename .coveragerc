@@ -1,0 +1,8 @@
+[run]
+omit =
+    Auth.py
+    CRUD/Lugar.py
+    CRUD/Publicacion.py
+    CRUD/Usuario.py
+    CRUD/Viaje.py
+    CRUD/ViajeLugar.py
