@@ -148,7 +148,7 @@ def get_admin_token() -> adminToken:
             refresh_token=token_info.get("refresh_token"),
             token_type=token_info.get("token_type")
         )
-        logger.info("Token administrativo obtenido exitosamente.")
+        #logger.info("Token administrativo obtenido exitosamente.")
         return tokenAdministrativo
     else:
         logger.error(f"Error al obtener el token: {r.status_code} - {r.text}")
@@ -159,11 +159,10 @@ def create_user(user: UserCreate):
     global tokenAdministrativo  # Usar la variable global
 
     # Verificar si el token administrativo está disponible, si no, llamarlo
-    if tokenAdministrativo is None:
-        try:
-            get_admin_token()  # Llama a la función para obtener el token
-        except HTTPException as e:
-            raise HTTPException(status_code=e.status_code, detail="Token administrativo no disponible")
+    try:
+        get_admin_token()  # Llama a la función para obtener el token
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail="Token administrativo no disponible")
     
     crear_usuario(
         nombre=user.firstname,
@@ -178,7 +177,9 @@ def create_user(user: UserCreate):
     if keycloackResponse["status_code"] == 201:
         return {"message": "Usuario creado exitosamente"}
     else:
+        print(keycloackResponse["detail"])
         raise HTTPException(status_code=keycloackResponse["status_code"], detail=keycloackResponse["detail"])
+
 
 @app.post("/logout/")
 async def logout(token: str = Depends(oauth2_scheme)):
