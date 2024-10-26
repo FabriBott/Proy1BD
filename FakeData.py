@@ -59,9 +59,10 @@ def asociarViajeLugar(idViaje):
 from datetime import datetime
 
 def generar_publicacion() -> PublicacionCreate:
+    titulos = ["De viaje en ", "Hoy en ", "Estuve por el pueblo llamado", "Conoci "]
     return PublicacionCreate(
         usuarioId=str(random.randint(1, USERSCOUNT)),  # Convertir a string
-        titulo=fake.sentence(),
+        titulo= random.choice(titulos)+ " " +fake.city(),
         descripcion=fake.paragraph(),  # Añadir descripción
         imageLinks=[fake.image_url() for _ in range(3)],  # Lista de URLs de imágenes simuladas
         videoLinks=[fake.url() for _ in range(2)],  # Lista de URLs de videos simulados
