@@ -337,7 +337,7 @@ db = client["redSocial"]
 
 # Endpoint para crear una publicación
 @app.post("/mongo/crear_publicacion/")
-async def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
+def crear_publicacion_mongo_endpoint(publicacion: PublicacionCreate):
     try:
         publicacion_id = crear_publicacionM(publicacion, db)
         redis_client.delete("publicaciones")  # Invalidar caché de publicaciones

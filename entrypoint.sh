@@ -4,7 +4,7 @@
 poetry run uvicorn app:app --host=0.0.0.0 --port=8000 &
 
 # Esperar un par de segundos para asegurarse de que uvicorn ha levantado correctamente
-sleep 70
+sleep 90
 
 # Ejecutar el script de generación de datos falsos
 poetry run python FakeData.py

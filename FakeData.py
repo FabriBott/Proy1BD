@@ -39,7 +39,6 @@ def generarLugar():
         ciudad = nombre,
         pais = fake.country()
     )
-    print(lugar)
     return lugar
 
 def generarViaje():
@@ -57,17 +56,24 @@ def asociarViajeLugar(idViaje):
         lugaresId=random.randint(1, PLACESCOUNT)
     )
 
+from datetime import datetime
+
 def generar_publicacion() -> PublicacionCreate:
     return PublicacionCreate(
-        usuarioId=random.randint(1, USERSCOUNT),
+        usuarioId=str(random.randint(1, USERSCOUNT)),  # Convertir a string
         titulo=fake.sentence(),
-        contenido=fake.paragraph()
+        descripcion=fake.paragraph(),  # Añadir descripción
+        imageLinks=[fake.image_url() for _ in range(3)],  # Lista de URLs de imágenes simuladas
+        videoLinks=[fake.url() for _ in range(2)],  # Lista de URLs de videos simulados
+        fechaPublicacion=datetime.now().isoformat(),  # Fecha de publicación en formato ISO
+        comentarios=[fake.sentence() for _ in range(5)],  # Lista de comentarios simulados
+        reacciones=[fake.word() for _ in range(3)]  # Lista de reacciones simuladas
     )
 
-def generar_comentario(post_id):
+
+def generar_comentario():
     return {
         "usuarioId":random.randint(1, USERSCOUNT),
-        "postId":post_id,
         "contenido":fake.sentence()
     }
 
@@ -97,12 +103,12 @@ print("Lugares generados")
 for i in range(POSTSCOUNT):
     # Crear una publicación
     post_data = generar_publicacion()
-    post_id = app.crear_publicacion_endpoint(post_data)
+    post_id = app.crear_publicacion_mongo_endpoint(post_data)
     
     # Agregar comentarios a la publicación
-    for _ in range(random.randint(1, 10)):
-        app.agregar_comentario_endpoint(generar_comentario(post_id))
+    #for _ in range(random.randint(1, 10)):
+    #    app.agregar_comentarioM(post_id, generar_comentario())
     
     # Agregar reacciones a la publicación
-    for _ in range(random.randint(1, 20)):
-        app.agregar_reaccion_endpoint(generar_reaccion(post_id))
+    #for _ in range(random.randint(1, 20)):
+    #    app.agregar_reaccionM(generar_reaccion(post_id))
